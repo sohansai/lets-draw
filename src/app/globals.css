@@ -1,0 +1,251 @@
+@import "tailwindcss";
+
+/* Dark mode: activated via .dark class (set automatically by ThemeProvider based on system preference) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+
+
+:root {
+  color-scheme: light;
+  /* Core Whiteboard */
+  --background: #faf9f8;
+  /* Soft warm paper white */
+  --foreground: #07132d;
+
+  /* Primary Accent: Indigo */
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-foreground: #ffffff;
+
+  /* Secondary Accents */
+  --accent-coral: #f43f5e;
+  --accent-mint: #10b981;
+  --accent-yellow: #fde047;
+
+  /* STT Colors */
+  --pencil: #6b7280;
+
+  /* Borders */
+  --border: #111827;
+  --border-subtle: #e5e7eb;
+
+  /* Text hierarchy */
+  --subtle: #6b7280;
+  --muted: #9ca3af;
+  --placeholder: #d1d5db;
+  /* Canvas */
+  --canvas-bg: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --background: #0b1120;
+    --foreground: #f8fafc;
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --primary-foreground: #ffffff;
+    --accent-coral: #fb7185;
+    --accent-mint: #34d399;
+    --accent-yellow: #facc15;
+    --border: #334155;
+    --border-subtle: #1e293b;
+    --canvas-bg: #0f172a;
+    --subtle: #94a3b8;
+    --muted: #64748b;
+    --placeholder: #475569;
+  }
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0b1120;
+  --foreground: #f8fafc;
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-foreground: #ffffff;
+  --accent-coral: #fb7185;
+  --accent-mint: #34d399;
+  --accent-yellow: #facc15;
+  --border: #334155;
+  --border-subtle: #1e293b;
+  --canvas-bg: #0f172a;
+  --subtle: #94a3b8;
+  --muted: #64748b;
+  --placeholder: #475569;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent-coral: var(--accent-coral);
+  --color-accent-mint: var(--accent-mint);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-pencil: var(--pencil);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-canvas-bg: var(--canvas-bg);
+  --color-subtle: var(--subtle);
+  --color-muted: var(--muted);
+  --color-placeholder: var(--placeholder);
+}
+
+@theme {
+  --font-sans: var(--font-sans);
+  --font-hand: var(--font-hand);
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* Hard-edged marker focus rings */
+*:focus-visible {
+  outline: 2px dashed var(--foreground);
+  outline-offset: 4px;
+}
+
+/* Selection */
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 0px;
+  /* hard edges */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground);
+}
+
+/* Staggered load animation */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+/* Background graph drift */
+@keyframes drift {
+  0% {
+    transform: translate(0, 0);
+  }
+
+  100% {
+    transform: translate(-80px, -80px);
+  }
+}
+
+.animate-drift {
+  animation: drift 60s linear infinite alternate;
+}
+
+/* Ink reveal animation */
+@keyframes ink-draw {
+  from {
+    stroke-dashoffset: 2000;
+    stroke-dasharray: 2000;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+    stroke-dasharray: 2000;
+  }
+}
+
+.animate-ink-draw path[stroke] {
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  animation: ink-draw 1.2s ease-out forwards;
+}
+
+/* Scribble out animation */
+@keyframes scribble {
+  from {
+    stroke-dashoffset: 200;
+    stroke-dasharray: 200;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+    stroke-dasharray: 200;
+  }
+}
+
+.animate-scribble path {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: scribble 0.4s ease-out forwards;
+}
+
+/* Data Flow Animation */
+@keyframes data-flow {
+  from {
+    stroke-dashoffset: 24;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-data-flow {
+  stroke-dasharray: 6 6;
+  animation: data-flow 0.8s linear infinite forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .animate-drift {
+    animation: none;
+  }
+
+  .animate-data-flow {
+    animation: none;
+  }
+
+  .animate-ink-draw path[stroke],
+  .animate-scribble path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

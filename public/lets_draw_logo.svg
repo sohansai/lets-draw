@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <style>
+    path { stroke: #000000; }
+    @media (prefers-color-scheme: dark) {
+      path { stroke: #ffffff; }
+    }
+  </style>
+
+  <!-- Main rough stroke of the 'L' -->
+  <path d="M 8 4 Q 7 12 8 20 Q 14 21 20 20" stroke-width="2.5" />
+  
+  <!-- Secondary overlapping stroke to create the 'sketchy/Excalidraw' effect -->
+  <path d="M 9 3 Q 10 12 7 21 Q 15 19 21 21" stroke-width="1.5" opacity="0.8" />
+  
+  <!-- Tiny scribble at the corner to reinforce the hand-drawn look -->
+  <path d="M 6 19 L 10 21" stroke-width="1" opacity="0.6" />
+</svg>

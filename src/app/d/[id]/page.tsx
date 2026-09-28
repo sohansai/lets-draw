@@ -1,0 +1,212 @@
+"use client";
+
+import { useRef, useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
+import { nanoid } from "nanoid";
+import LoadingIndicator from '@/components/editor/LoadingIndicator';
+import ExcalidrawCanvas, {
+  ExcalidrawCanvasHandle,
+} from "@/components/editor/ExcalidrawCanvas";
+import VoicePanel, { type VoicePanelHandle } from "@/components/editor/VoicePanel";
+import EditorTopBar from "@/components/editor/EditorTopBar";
+import { type EditorMenuHandle } from "@/components/editor/EditorMenu";
+import { useAutoSave } from "@/hooks/editor/useAutoSave";
+import { useVersionHistory } from "@/hooks/editor/useVersionHistory";
+import { useAIGeneration } from "@/hooks/editor/useAIGeneration";
+import { useKeyboardShortcuts } from "@/hooks/core/useKeyboardShortcuts";
+import type { Diagram } from "@/types/library";
+import { useUserSettings } from "@/hooks/core/useUserSettings";
+import SettingsPanel from "@/components/editor/SettingsPanel";
+import ShortcutsModal from "@/components/editor/ShortcutsModal";
+import StorageBanner from "@/components/editor/StorageBanner";
+
+interface Props {
+  params: Promise<{ id: string }>;
+}
+
+export default function EditorPage({ params }: Props) {
+  const { id } = use(params);
+  const router = useRouter();
+  const canvasRef = useRef<ExcalidrawCanvasHandle>(null);
+  const voicePanelRef = useRef<VoicePanelHandle>(null);
+  const menuRef = useRef<EditorMenuHandle>(null);
+  const [restoreFlash, setRestoreFlash] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [lookupComplete, setLookupComplete] = useState(false);
+  const { settings, setSettings } = useUserSettings();
+
+  const diagram = useLiveQuery(() => db.diagrams.get(id), [id]);
+
+  useEffect(() => {
+    let active = true;
+    setLookupComplete(false);
+    db.diagrams
+      .get(id)
+      .then(() => {
+        if (active) setLookupComplete(true);
+      })
+      .catch(() => {
+        if (active) setLookupComplete(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (diagram) db.diagrams.update(id, { lastOpenedAt: Date.now() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, diagram?.id]);
+
+  const { triggerSave, forceSave, saveVersion, saveStatus, pauseSave, resumeSave } = useAutoSave(id, canvasRef);
+  useVersionHistory(id);
+  const { loadingPhase,
+    streamText,
+    isLoading, errorMessage, showError, handleMicStart, handleMicStop, handleSilence } =
+    useAIGeneration({ id, diagram, canvasRef, settings });
+
+  function triggerRestoreAnimation() {
+    setRestoreFlash(true);
+    setTimeout(() => setRestoreFlash(false), 500);
+  }
+
+  useKeyboardShortcuts({
+    "mod+s": () => forceSave(canvasRef.current?.getElements() ?? []),
+    "mod+k": () => voicePanelRef.current?.focusInput(),
+    "mod+e": () => menuRef.current?.toggle(),
+    "mod+shift+l": () => handleToggleLock(),
+    "[": () => voicePanelRef.current?.navigatePrev(),
+    "]": () => voicePanelRef.current?.navigateNext(),
+    "?": () => setShortcutsOpen(true),
+  });
+
+  async function handleDuplicate() {
+    if (!diagram) return;
+    const newId = nanoid();
+    const now = Date.now();
+    const duplicate: Diagram = {
+      ...diagram,
+      id: newId,
+      name: `${diagram.name} (copy)`,
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: now,
+      version: 1,
+      trashedAt: null,
+      starred: false,
+    };
+    await db.diagrams.add(duplicate);
+    router.push(`/d/${newId}`);
+  }
+
+  async function handleToggleLock() {
+    if (!diagram) return;
+    await db.diagrams.update(id, { locked: !diagram.locked });
+  }
+
+  if (diagram === undefined && !lookupComplete) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background text-subtle">
+        Loading…
+      </div>
+    );
+  }
+
+  if (diagram === undefined || diagram === null) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background text-subtle">
+        Diagram not found.
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
+      <EditorTopBar
+        diagram={diagram!}
+        saveStatus={saveStatus}
+        onBack={() => router.push("/library")}
+        onRename={(name) => db.diagrams.update(id, { name, updatedAt: Date.now() })}
+        onStar={(starred) => db.diagrams.update(id, { starred })}
+        onDuplicate={handleDuplicate}
+        onToggleLock={handleToggleLock}
+        onSaveVersion={saveVersion}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
+        menuRef={menuRef}
+        canvasRef={canvasRef}
+      />
+
+      <div className="lg:hidden flex items-center justify-center py-1.5 px-4 bg-amber-50 border-b border-amber-200 text-amber-700 text-xs shrink-0">
+        For best experience, open on a desktop browser.
+      </div>
+
+      <StorageBanner />
+
+      {errorMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+          <div className="px-4 py-2 bg-red-500/90 text-white text-sm rounded-lg shadow-lg">
+            {errorMessage}
+          </div>
+        </div>
+      )}
+
+      {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} />}
+
+      {settingsOpen && (
+        <SettingsPanel settings={settings} onSave={setSettings} onClose={() => setSettingsOpen(false)} />
+      )}
+
+      <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
+        <div className="h-[42vh] lg:h-full w-full lg:w-[30%] shrink-0 border-b lg:border-b-0 lg:border-r border-border-subtle overflow-hidden">
+          <VoicePanel
+            ref={voicePanelRef}
+            diagramId={id}
+            diagramType={diagram!.diagramType}
+            isLoading={isLoading}
+            onSilence={handleSilence}
+            onMockSubmit={handleSilence}
+            onMicStart={handleMicStart}
+            onMicStop={handleMicStop}
+            canvasRef={canvasRef}
+            onRestoreAnimation={triggerRestoreAnimation}
+            pauseSave={pauseSave}
+            resumeSave={resumeSave}
+            onError={showError}
+          />
+        </div>
+        <div className="flex-1 min-h-0 min-w-0 p-2 mx-3 lg:mx-0 lg:p-3 bg-background">
+          <div
+            className="relative w-full h-full rounded-2xl overflow-hidden bg-background border border-border-subtle"
+            style={{ maxWidth: 4096, maxHeight: 4096 }}
+          >
+            <div
+              className={`absolute inset-0 z-20 pointer-events-none bg-background transition-opacity duration-500 ${
+                restoreFlash ? "opacity-20" : "opacity-0"
+              }`}
+            />
+            <ExcalidrawCanvas
+              ref={canvasRef}
+              initialElements={diagram!.elements}
+              initialFiles={diagram!.files ?? {}}
+              onChange={(elements) => triggerSave(elements)}
+            />
+            <LoadingIndicator phase={loadingPhase} streamText={streamText} />
+            {diagram?.locked && (
+              <div className="absolute inset-0 pointer-events-none flex items-end justify-center pb-6 z-10">
+                <div className="flex items-center gap-2 px-4 py-2 bg-yellow-500/20 border border-yellow-500/40 rounded-lg backdrop-blur-sm">
+                  <span className="text-yellow-400 text-sm font-medium">
+                    This diagram is locked. Voice input is disabled.
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
